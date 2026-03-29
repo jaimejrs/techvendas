@@ -1,0 +1,13 @@
+# Arquivos de Segurança Streamlit
+.streamlit/secrets.toml
+
+# Ambientes Virtuais (ajuste o nome se a sua pasta for diferente de .venv ou venv)
+.venv/
+venv/
+env/
+data/
+
+# Arquivos de cache do Python e Jupyter
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
