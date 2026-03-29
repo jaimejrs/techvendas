@@ -1,24 +1,23 @@
 import pandas as pd
-import psycopg2
+from sqlalchemy import create_engine
 import streamlit as st
 
+# Recuperando as credenciais via Streamlit Secrets
 try:
     HOST = st.secrets["postgres"]["host"]
     DATABASE = st.secrets["postgres"]["database"]
     USER = st.secrets["postgres"]["user"]
     PASSWORD = st.secrets["postgres"]["password"]
 except KeyError:
-    st.error("Erro: Credenciais de banco de dados não encontradas no arquivo secrets.toml")
+    st.error("Erro: Credenciais de banco de dados não encontradas.")
     st.stop()
 
-def obter_conexao():
-    """Cria e retorna a conexão com o banco de dados."""
-    return psycopg2.connect(host=HOST, database=DATABASE, user=USER, password=PASSWORD)
+# Criando a string de conexão SQLAlchemy (Nova recomendação do Pandas)
+DATABASE_URL = f"postgresql://{USER}:{PASSWORD}@{HOST}/{DATABASE}"
 
-@st.cache_data(ttl=3600) # Cache de 1 hora
+@st.cache_data(ttl=3600)
 def carregar_dados_vendas():
-    """Extrai e trata a base analítica de Vendas e Produtos."""
-    conn = obter_conexao()
+    engine = create_engine(DATABASE_URL)
     query = """
     SELECT 
         nf.id AS id_nota_fiscal, nf.data_venda, nf.id_vendedor, nf.id_cliente,
@@ -28,12 +27,12 @@ def carregar_dados_vendas():
     INNER JOIN vendas.produto p ON inf.id_produto = p.id
     INNER JOIN vendas.categoria cat ON p.id_categoria = cat.id;
     """
-    df = pd.read_sql(query, conn)
-    conn.close()
+    with engine.connect() as conn:
+        df = pd.read_sql(query, conn)
     
-    # Tratamento e Feature Engineering
+    # Tratamento e Feature Engineering (Removendo o fuso horário para evitar Warnings)
     df.dropna(subset=['receita', 'valor_custo', 'categoria'], inplace=True)
-    df['data_venda'] = pd.to_datetime(df['data_venda'])
+    df['data_venda'] = pd.to_datetime(df['data_venda']).dt.tz_localize(None) 
     df['ano_mes'] = df['data_venda'].dt.to_period('M').astype(str)
     df['ano'] = df['data_venda'].dt.year
     df['margem_lucro'] = df['receita'] - df['valor_custo']
@@ -42,8 +41,7 @@ def carregar_dados_vendas():
 
 @st.cache_data(ttl=3600)
 def carregar_dados_financeiro():
-    """Extrai e trata a base analítica Financeira e Regional."""
-    conn = obter_conexao()
+    engine = create_engine(DATABASE_URL)
     query = """
     SELECT 
         nf.id AS id_nota_fiscal, nf.id_cliente, cr.valor_atual AS valor_devido, 
@@ -57,8 +55,8 @@ def carregar_dados_financeiro():
     LEFT JOIN geral.cidade c ON b.id_cidade = c.id
     LEFT JOIN geral.estado est ON c.id_estado = est.id;
     """
-    df = pd.read_sql(query, conn)
-    conn.close()
+    with engine.connect() as conn:
+        df = pd.read_sql(query, conn)
     
     # Tratamento
     df['uf'] = df['uf'].fillna('N/I')
