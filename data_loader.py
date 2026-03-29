@@ -63,3 +63,30 @@ def carregar_dados_financeiro():
     df['cidade'] = df['cidade'].fillna('N/I')
     
     return df
+
+@st.cache_data(ttl=3600)
+def carregar_dados_crm():
+    engine = create_engine(DATABASE_URL)
+    query = """
+    SELECT 
+        nf.id_cliente,
+        nf.data_venda,
+        inf.valor_venda_real AS receita,
+        CASE 
+            WHEN pf.id IS NOT NULL THEN 'Pessoa Física (B2C)'
+            WHEN pj.id IS NOT NULL THEN 'Pessoa Jurídica (B2B)'
+            ELSE 'Não Identificado'
+        END as tipo_cliente
+    FROM vendas.nota_fiscal nf
+    INNER JOIN vendas.item_nota_fiscal inf ON nf.id = inf.id_nota_fiscal
+    INNER JOIN geral.pessoa p ON nf.id_cliente = p.id
+    LEFT JOIN geral.pessoa_fisica pf ON p.id = pf.id
+    LEFT JOIN geral.pessoa_juridica pj ON p.id = pj.id;
+    """
+    with engine.connect() as conn:
+        df = pd.read_sql(query, conn)
+    
+    # Tratamento de Data e Feature Engineering
+    df['data_venda'] = pd.to_datetime(df['data_venda']).dt.tz_localize(None)
+    df['ano'] = df['data_venda'].dt.year
+    return df
