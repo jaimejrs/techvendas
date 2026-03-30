@@ -1,122 +1,309 @@
 import streamlit as st
 import plotly.express as px
+import plotly.graph_objects as go
 import data_loader
+import utils as u
+import pandas as pd
 
-# 1. Configuração da Página
-st.set_page_config(page_title="Financeiro | TechVendas", page_icon="💰", layout="wide")
-
-st.markdown("<h2 style='color: #00024D;'>Controle Financeiro e Risco Regional</h2>", unsafe_allow_html=True)
-st.markdown("Monitoramento de recebíveis, fluxo de caixa e mapeamento geográfico da inadimplência.")
+st.markdown(
+    "<h2 style='color: #007BFF; font-family: Inter, sans-serif;'>Gestão de Recebíveis e Risco de Crédito</h2>",
+    unsafe_allow_html=True,
+)
+st.markdown(
+    "Análise avançada: ageing de carteira, concentração de risco e listagem crítica para cobrança."
+)
 st.divider()
 
-# 2. Carregamento dos Dados
-with st.spinner("Carregando base financeira..."):
-    df_financeiro = data_loader.carregar_dados_financeiro()
+# ── Carregamento ──────────────────────────────────────────────────────────────
+with st.spinner("Processando dados financeiros..."):
+    df_fin = data_loader.carregar_dados_financeiro()
+    df_vendas = data_loader.carregar_dados_vendas()
 
-# 3. Barra Lateral: Filtros Financeiros
-st.sidebar.header("Filtros de Risco")
+# Cross-data: categoria por nota fiscal
+cat_por_nota = df_vendas[["id_nota_fiscal", "categoria"]].drop_duplicates(
+    subset=["id_nota_fiscal"]
+)
+df_fin = pd.merge(df_fin, cat_por_nota, on="id_nota_fiscal", how="left")
+df_fin["categoria"] = df_fin["categoria"].fillna("Diversos")
+df_fin["ano"] = pd.to_datetime(df_fin["data_venda"]).dt.year
 
-# Filtro de Estado (UF)
-ufs_disponiveis = ["Todos"] + sorted(df_financeiro['uf'].unique().tolist())
-uf_selecionada = st.sidebar.selectbox("Filtrar por Estado (UF)", ufs_disponiveis)
+# ── Filtros ───────────────────────────────────────────────────────────────────
+st.sidebar.header("Filtros Financeiros")
 
-# Aplicação do Filtro
-df_filtrado = df_financeiro.copy()
-if uf_selecionada != "Todos":
-    df_filtrado = df_filtrado[df_filtrado['uf'] == uf_selecionada]
+anos_fin = ["Todos"] + sorted(df_fin["ano"].dropna().unique().tolist(), reverse=True)
+ano_fin_selecionado = st.sidebar.selectbox("Ano", anos_fin)
 
-# 4. Cálculo dos KPIs Financeiros
-total_esperado = df_filtrado['valor_devido'].sum()
-recebido = df_filtrado[df_filtrado['status_pagamento'] == 'LIQUIDADA']['valor_devido'].sum()
-em_atraso = df_filtrado[df_filtrado['status_pagamento'] == 'ATRASADA']['valor_devido'].sum()
-taxa_risco = (em_atraso / total_esperado) * 100 if total_esperado > 0 else 0
+ufs_disponiveis = ["Todas"] + sorted(df_fin["uf"].dropna().unique().tolist())
+uf_selecionada = st.sidebar.selectbox("Filtrar por UF", ufs_disponiveis)
 
-# 5. Renderização dos Cards 
-st.markdown("""
-    <style>
-    .kpi-card { background-color: #74A9CF; padding: 20px; border-radius: 10px; color: #00024D; text-align: center; box-shadow: 2px 2px 5px rgba(0,0,0,0.1); }
-    .kpi-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 5px; }
-    .kpi-value { font-size: 1.8rem; font-weight: 800; }
-    </style>
-""", unsafe_allow_html=True)
+status_disponiveis = sorted(df_fin["status_pagamento"].dropna().unique().tolist())
+status_selecionado = st.sidebar.selectbox(
+    "Status do Título", ["Todos"] + status_disponiveis
+)
 
-col1, col2, col3, col4 = st.columns(4)
-col1.markdown(f"<div class='kpi-card'><div class='kpi-title'>Total da Carteira</div><div class='kpi-value'>R$ {total_esperado:,.2f}</div></div>", unsafe_allow_html=True)
-col2.markdown(f"<div class='kpi-card'><div class='kpi-title'>Valor Liquidado</div><div class='kpi-value'>R$ {recebido:,.2f}</div></div>", unsafe_allow_html=True)
-col3.markdown(f"<div class='kpi-card'><div class='kpi-title'>Valor em Atraso</div><div class='kpi-value' style='color: #E63946;'>R$ {em_atraso:,.2f}</div></div>", unsafe_allow_html=True)
-col4.markdown(f"<div class='kpi-card'><div class='kpi-title'>Taxa de Risco</div><div class='kpi-value'>{taxa_risco:.2f}%</div></div>", unsafe_allow_html=True)
+categorias_fin = ["Todas"] + sorted(df_fin["categoria"].dropna().unique().tolist())
+cat_selecionada = st.sidebar.selectbox("Filtrar por Categoria", categorias_fin)
+
+df = df_fin
+if ano_fin_selecionado != "Todos":
+    df = df[df["ano"] == ano_fin_selecionado]
+if uf_selecionada != "Todas":
+    df = df[df["uf"] == uf_selecionada]
+if status_selecionado != "Todos":
+    df = df[df["status_pagamento"] == status_selecionado]
+if cat_selecionada != "Todas":
+    df = df[df["categoria"] == cat_selecionada]
+
+if df.empty:
+    st.warning("Nenhum dado encontrado para os filtros selecionados.")
+    st.stop()
+
+# ── KPIs ──────────────────────────────────────────────────────────────────────
+total_carteira = df["valor_devido"].sum()
+df_atrasados = df[df["status_pagamento"] == "ATRASADA"]
+atraso_total = df_atrasados["valor_devido"].sum()
+taxa_inadimplencia = (atraso_total / total_carteira * 100) if total_carteira > 0 else 0
+ticket_medio_atraso = (
+    df_atrasados["valor_devido"].mean() if not df_atrasados.empty else 0
+)
+qtd_titulos_atraso = len(df_atrasados)
+
+
+c1, c2, c3, c4, c5 = st.columns(5)
+c1.markdown(
+    f"<div class='kpi-card'><div class='kpi-title'>Carteira Total</div><div class='kpi-value'>{u.brl(total_carteira)}</div></div>",
+    unsafe_allow_html=True,
+)
+c2.markdown(
+    f"<div class='kpi-card kpi-alert'><div class='kpi-title'>Inadimplência</div><div class='kpi-value'>{u.brl(atraso_total)}</div></div>",
+    unsafe_allow_html=True,
+)
+c3.markdown(
+    f"<div class='kpi-card'><div class='kpi-title'>Taxa de Risco</div><div class='kpi-value'>{u.pct(taxa_inadimplencia, 2)}</div></div>",
+    unsafe_allow_html=True,
+)
+c4.markdown(
+    f"<div class='kpi-card'><div class='kpi-title'>Títulos Atrasados</div><div class='kpi-value'>{u.num(qtd_titulos_atraso)}</div></div>",
+    unsafe_allow_html=True,
+)
+c5.markdown(
+    f"<div class='kpi-card kpi-alert'><div class='kpi-title'>Ticket Médio Atraso</div><div class='kpi-value'>{u.brl(ticket_medio_atraso)}</div></div>",
+    unsafe_allow_html=True,
+)
 
 st.write("")
 st.write("")
 
-# 6. Gráficos Financeiros
-col_graf1, col_graf2 = st.columns(2)
+# ══════════════════════════════════════════════════════════════════════════════
+# 1. AGEING — ENVELHECIMENTO DA CARTEIRA (DUAL AXIS)
+# ══════════════════════════════════════════════════════════════════════════════
+st.markdown("### Ageing: Envelhecimento da Carteira em Atraso")
+st.caption(
+    "Distribuição dos títulos inadimplentes por faixa de atraso — valor acumulado e quantidade de títulos."
+)
 
-with col_graf1:
-    st.markdown("#### Status da Carteira de Recebíveis")
-    if not df_filtrado.empty:
-        status_carteira = df_filtrado.groupby('status_pagamento')['valor_devido'].sum().reset_index()
-        color_map = {'ATRASADA': '#E63946', 'LIQUIDADA': '#00024D', 'EM_ABERTO': '#74A9CF', 'CANCELADA': '#8D99AE'}
-        
-        fig_status = px.bar(
-            status_carteira, 
-            x='status_pagamento', 
-            y='valor_devido',
-            labels={'status_pagamento': 'Status', 'valor_devido': 'Valor (R$)'},
-            color='status_pagamento',
-            color_discrete_map=color_map,
-            text_auto='.2s'
+if not df_atrasados.empty:
+    bins = [-1, 30, 60, 90, 180, 360, 9999]
+    labels = [
+        "0-30 dias",
+        "31-60 dias",
+        "61-90 dias",
+        "91-180 dias",
+        "181-360 dias",
+        "+360 dias",
+    ]
+    df_age = df_atrasados.copy()
+    df_age["faixa_atraso"] = pd.cut(df_age["dias_atraso"], bins=bins, labels=labels)
+
+    ageing_sum = (
+        df_age.groupby("faixa_atraso", observed=False)
+        .agg(valor=("valor_devido", "sum"), qtd=("valor_devido", "count"))
+        .reset_index()
+    )
+
+    # Gradiente de cores: quanto mais velho, mais vermelho
+    colors_age = ["#C4D9E8", "#39B54A", "#3690C0", "#0570B0", "#034E7C", "#E63946"]
+
+    fig_ageing = go.Figure()
+    fig_ageing.add_trace(
+        go.Bar(
+            x=ageing_sum["faixa_atraso"],
+            y=ageing_sum["valor"],
+            marker_color=colors_age,
+            name="Valor (R$)",
+            text=ageing_sum["valor"].apply(lambda v: f"R$ {v:,.0f}"),
+            textposition="outside",
         )
-
-        fig_status.update_layout(showlegend=False)
-        st.plotly_chart(fig_status, width='stretch')
-    else:
-        st.warning("Nenhum dado encontrado para os filtros selecionados.")
-
-with col_graf2:
-    st.markdown("#### Risco por Localidade (Top 10)")
-    if not df_filtrado.empty:
-
-        df_atraso_local = df_filtrado[df_filtrado['status_pagamento'] == 'ATRASADA']
-        
-        # Se filtramos por um UF específico, mostramos as Cidades. Se for "Todos", mostramos os UFs.
-        if uf_selecionada == "Todos":
-            risco_local = df_atraso_local.groupby('uf')['valor_devido'].sum().nlargest(10).reset_index()
-            eixo_x = 'uf'
-            label_x = 'Estado (UF)'
-        else:
-            risco_local = df_atraso_local.groupby('cidade')['valor_devido'].sum().nlargest(10).reset_index()
-            eixo_x = 'cidade'
-            label_x = f'Cidades em {uf_selecionada}'
-            
-        fig_local = px.bar(
-            risco_local, 
-            x=eixo_x, 
-            y='valor_devido', 
-            labels={eixo_x: label_x, 'valor_devido': 'Valor em Atraso (R$)'}, 
-            color_discrete_sequence=['#74A9CF'],
-            text_auto='.2s'
+    )
+    fig_ageing.add_trace(
+        go.Scatter(
+            x=ageing_sum["faixa_atraso"],
+            y=ageing_sum["qtd"],
+            mode="lines+markers+text",
+            name="Qtd. Títulos",
+            yaxis="y2",
+            line=dict(color="#E63946", width=2.5),
+            marker=dict(size=8),
+            text=ageing_sum["qtd"],
+            textposition="top center",
         )
-        st.plotly_chart(fig_local, width='stretch')
-    else:
-        st.warning("Nenhum título em atraso encontrado para os filtros selecionados.")
-
-st.divider()
-
-# 7. Insight Estratégico 
-st.markdown("### 💡 Insight de Governança Regional (Ofensores)")
-if uf_selecionada in ["Todos", "CE"]:
-    df_atraso_geral = df_financeiro[df_financeiro['status_pagamento'] == 'ATRASADA']
-    atraso_ce = df_atraso_geral[df_atraso_geral['uf'] == 'CE']['valor_devido'].sum()
-    atraso_fortaleza = df_atraso_geral[(df_atraso_geral['uf'] == 'CE') & (df_atraso_geral['cidade'] == 'FORTALEZA')]['valor_devido'].sum()
-    
-    perc_fortaleza = (atraso_fortaleza / atraso_ce) * 100 if atraso_ce > 0 else 0
-    
-    st.info(f"""
-    **Concentração de Risco no Ceará:** Analisando a base completa, identificamos que dos **R$ {atraso_ce:,.2f}** inadimplentes no estado do Ceará, 
-    **R$ {atraso_fortaleza:,.2f} ({perc_fortaleza:.2f}%)** concentram-se exclusivamente em clientes registrados em **Fortaleza**. 
-    
-    *Recomendação Operacional: Direcionar campanhas de renegociação específicas e auditoria de cadastros para a capital cearense.*
-    """)
+    )
+    fig_ageing.update_layout(
+        yaxis=dict(title="Valor Acumulado (R$)"),
+        yaxis2=dict(title="Qtd. Títulos", overlaying="y", side="right"),
+        legend=dict(orientation="h", y=-0.15),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        margin=dict(t=20, b=60),
+    )
+    st.plotly_chart(fig_ageing, width="stretch")
 else:
-    st.info("O insight estratégico focado no Ceará só é exibido quando a visão está em 'Todos' ou filtrada especificamente para 'CE'.")
+    st.success(" Nenhum título em atraso para os filtros selecionados!")
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 2. EVOLUÇÃO TEMPORAL + DISTRIBUIÇÃO POR STATUS
+# ══════════════════════════════════════════════════════════════════════════════
+col_l, col_r = st.columns(2)
+
+with col_l:
+    st.markdown("#### Análise Vintage — Status por Mês de Originação")
+    st.caption(
+        "Para cada mês de venda, qual a proporção de títulos liquidados vs atrasados hoje."
+    )
+    df_temp = df.copy()
+    df_temp["mes_ano"] = df_temp["data_venda"].dt.to_period("M").astype(str)
+    evolucao = (
+        df_temp.groupby(["mes_ano", "status_pagamento"])["valor_devido"]
+        .sum()
+        .reset_index()
+    )
+
+    color_map = {
+        "ATRASADA": "#E63946",
+        "LIQUIDADA": "#007BFF",
+        "EM_ABERTO": "#39B54A",
+        "CANCELADA": "#8D99AE",
+    }
+    fig_ev = px.bar(
+        evolucao,
+        x="mes_ano",
+        y="valor_devido",
+        color="status_pagamento",
+        color_discrete_map=color_map,
+        barmode="stack",
+        labels={
+            "mes_ano": "Mês/Ano de Venda",
+            "valor_devido": "Valor (R$)",
+            "status_pagamento": "Status",
+        },
+    )
+    fig_ev.update_layout(legend=dict(orientation="h", y=-0.25), margin=dict(t=10, b=80))
+    st.plotly_chart(fig_ev, width="stretch")
+
+with col_r:
+    st.markdown("#### Distribuição da Carteira por Status")
+    status_sum = df.groupby("status_pagamento")["valor_devido"].sum().reset_index()
+    color_map = {
+        "ATRASADA": "#E63946",
+        "LIQUIDADA": "#007BFF",
+        "EM_ABERTO": "#39B54A",
+        "CANCELADA": "#8D99AE",
+    }
+
+    fig_donut = px.pie(
+        status_sum,
+        names="status_pagamento",
+        values="valor_devido",
+        hole=0.45,
+        color="status_pagamento",
+        color_discrete_map=color_map,
+    )
+    fig_donut.update_traces(textposition="inside", textinfo="percent+label")
+    fig_donut.update_layout(showlegend=False, margin=dict(t=10, b=10))
+    st.plotly_chart(fig_donut, width="stretch")
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 3. RISCO GEOGRÁFICO + RISCO POR CATEGORIA
+# ══════════════════════════════════════════════════════════════════════════════
+st.divider()
+col_l2, col_r2 = st.columns(2)
+
+with col_l2:
+    st.markdown("#### Top 10 Estados — Exposição ao Risco")
+    if not df_atrasados.empty:
+        risco_uf = (
+            df_atrasados.groupby("uf")
+            .agg(valor_atraso=("valor_devido", "sum"), qtd=("valor_devido", "count"))
+            .reset_index()
+            .sort_values("valor_atraso", ascending=True)
+            .tail(10)
+        )
+
+        fig_uf = px.bar(
+            risco_uf,
+            x="valor_atraso",
+            y="uf",
+            orientation="h",
+            text=risco_uf["valor_atraso"].apply(lambda v: f"R$ {v:,.0f}"),
+            color="valor_atraso",
+            color_continuous_scale=["#39B54A", "#E63946"],
+            labels={"valor_atraso": "Valor em Atraso (R$)", "uf": ""},
+        )
+        fig_uf.update_layout(
+            showlegend=False, coloraxis_showscale=False, margin=dict(t=10, b=10)
+        )
+        st.plotly_chart(fig_uf, width="stretch")
+    else:
+        st.success("Sem inadimplência geográfica.")
+
+with col_r2:
+    st.markdown("#### Inadimplência por Categoria de Produto")
+    if not df_atrasados.empty:
+        df_atr_cat = df[df["status_pagamento"] == "ATRASADA"]
+        risco_cat = (
+            df_atr_cat.groupby("categoria")["valor_devido"]
+            .sum()
+            .reset_index()
+            .sort_values("valor_devido", ascending=True)
+        )
+
+        fig_cat = px.bar(
+            risco_cat,
+            y="categoria",
+            x="valor_devido",
+            orientation="h",
+            color_discrete_sequence=["#007BFF"],
+            labels={"valor_devido": "Valor em Atraso (R$)", "categoria": ""},
+            text=risco_cat["valor_devido"].apply(lambda v: f"R$ {v:,.0f}"),
+        )
+        fig_cat.update_layout(margin=dict(t=10, b=10))
+        st.plotly_chart(fig_cat, width="stretch")
+    else:
+        st.success("Sem inadimplência por categoria.")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 5. TABELA DE AUDITORIA PARA COBRANÇA
+# ══════════════════════════════════════════════════════════════════════════════
+st.divider()
+st.markdown("### Listagem Crítica para Cobrança")
+st.write("Os 50 títulos com maior tempo de atraso que requerem ação imediata:")
+
+if not df_atrasados.empty:
+    df_critico = df_atrasados.sort_values("dias_atraso", ascending=False).head(50)
+    st.dataframe(
+        df_critico[
+            [
+                "id_nota_fiscal",
+                "uf",
+                "cidade",
+                "categoria",
+                "valor_devido",
+                "dias_atraso",
+            ]
+        ].style.format({"valor_devido": u.fmt_brl2, "dias_atraso": u.fmt_dias}),
+        width="stretch",
+        hide_index=True,
+    )
+else:
+    st.success("Nenhum título em atraso — parabéns!")
