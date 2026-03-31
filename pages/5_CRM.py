@@ -133,7 +133,7 @@ with col_mapa:
             mapa_df,
             geojson=geojson,
             locations="uf",
-            featureidkey="properties.sigla",
+            featureidkey="properties.SIGLA",
             color="clientes",
             color_continuous_scale=[
                 "#F0FAF1",
