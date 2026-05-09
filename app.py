@@ -28,7 +28,7 @@ st.markdown(
   
   /* ── Sidebar ── */
   [data-testid="stSidebar"] {
-      background: linear-gradient(180deg, #0052D4 0%, #4364F7 50%, #6FB1FC 100%) !important;
+      background: linear-gradient(180deg, #1E1B4B 0%, #4C3D9E 50%, #7C5CBF 100%) !important;
       box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
       border-right: 1px solid rgba(255,255,255,0.1);
   }
@@ -104,15 +104,13 @@ st.markdown(
   .kpi-value {
       font-size: 1.45rem;
       font-weight: 800;
-      background: linear-gradient(45deg, #00f2fe 0%, #4facfe 100%);
+      background: linear-gradient(45deg, #C4B5FD 0%, #7C5CBF 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       display: inline-block;
   }
-  .kpi-green { border-left-color: #39B54A; }
-  .kpi-green .kpi-value { background: linear-gradient(45deg, #39B54A 0%, #38f9d7 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-  .kpi-alert { border-left-color: #E63946; }
-  .kpi-alert .kpi-value { background: linear-gradient(45deg, #E63946 0%, #ffb199 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .kpi-green .kpi-value { background: linear-gradient(45deg, #2DD4BF 0%, #34D399 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .kpi-alert .kpi-value { background: linear-gradient(45deg, #F26B6B 0%, #FCA5A5 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
   /* ── Horizontal Navigation Buttons ── */
   [data-testid="stPageLink"] a {
@@ -134,14 +132,14 @@ st.markdown(
       overflow: hidden;
   }
   [data-testid="stPageLink"] a:hover {
-      background-color: #007BFF !important;
+      background-color: #7C5CBF !important;
       color: #ffffff !important;
-      border-color: #007BFF !important;
+      border-color: #7C5CBF !important;
       box-shadow: 0 8px 20px rgba(0, 123, 255, 0.3) !important;
       transform: translateY(-3px) !important;
   }
   [data-testid="stPageLink"] a[aria-current="page"] {
-      background-color: #007BFF !important;
+      background-color: #7C5CBF !important;
       color: #ffffff !important;
       border: none !important;
       box-shadow: 0 8px 20px rgba(0, 123, 255, 0.4) !important;
@@ -153,7 +151,7 @@ st.markdown(
       letter-spacing: -0.5px;
   }
   h2 {
-      color: #007BFF !important;
+      color: #7C5CBF !important;
   }
   
   /* ── Metric Cards Native Streamlit Adjustments ── */
@@ -180,7 +178,7 @@ st.markdown(
           border-color: rgba(255,255,255,0.1) !important;
       }
       [data-testid="stPageLink"] a:hover {
-          background-color: #007BFF !important;
+          background-color: #7C5CBF !important;
           color: #fff !important;
       }
   }
@@ -191,10 +189,10 @@ st.markdown(
 
 # ── Navegação ──────────────────────────────────────────────────────────────────
 pages = [
-    st.Page("pages/2_Vendas.py", title="Vendas"),
-    st.Page("pages/4_Produtos.py", title="Produtos"),
-    st.Page("pages/5_CRM.py", title="CRM"),
-    st.Page("pages/6_Analise_Profunda.py", title="Previsão IA"),
+    st.Page("pages/1_Vendas.py", title="Vendas"),
+    st.Page("pages/2_Produtos.py", title="Produtos"),
+    st.Page("pages/3_CRM.py", title="CRM"),
+    st.Page("pages/4_Recursos_Humanos.py", title="RH"),
 ]
 
 pg = st.navigation(pages, position="hidden")
@@ -219,13 +217,17 @@ st.session_state["global_ano"] = ano_global
 st.session_state["global_categoria"] = cat_global
 st.sidebar.markdown("---")
 
+# ── Agente de IA na Sidebar ───────────────────────────────────────────────────
+import ai_agent
+ai_agent.render_sidebar_agent()
+
 
 # ── Barra de navegação horizontal ─────────────────────────────────────────────
 nav_items = [
-    ("pages/2_Vendas.py", " Vendas"),
-    ("pages/4_Produtos.py", " Produtos"),
-    ("pages/5_CRM.py", " CRM"),
-    ("pages/6_Analise_Profunda.py", " Previsão IA"),
+    ("pages/1_Vendas.py", " Vendas"),
+    ("pages/2_Produtos.py", " Produtos"),
+    ("pages/3_CRM.py", " CRM"),
+    ("pages/4_Recursos_Humanos.py", " RH"),
 ]
 
 cols = st.columns(len(nav_items))

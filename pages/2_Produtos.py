@@ -4,6 +4,7 @@ import plotly.graph_objects as go
 import pandas as pd
 import data_loader
 import utils as u
+from utils import C
 
 # Produtos — Inteligência de Catálogo
 
@@ -91,7 +92,7 @@ df_abc["classe"] = df_abc["pct_acum"].apply(
     lambda x: "A" if x <= 80 else ("B" if x <= 95 else "C")
 )
 
-color_map_abc = {"A": "#007BFF", "B": "#39B54A", "C": "#C4D9E8"}
+color_map_abc = C.abc_map()
 
 fig_abc = go.Figure()
 for classe, cor in color_map_abc.items():
@@ -115,14 +116,14 @@ fig_abc.add_trace(
         mode="lines+markers",
         name="% Acumulado",
         yaxis="y2",
-        line=dict(color="#E63946", width=2.5),
+        line=dict(color=C.CORAL, width=2.5),
         marker=dict(size=7),
     )
 )
 fig_abc.add_hline(
     y=80,
     line_dash="dash",
-    line_color="#E63946",
+    line_color=C.CORAL,
     opacity=0.5,
     annotation_text="80%",
     annotation_position="top right",
@@ -137,6 +138,7 @@ fig_abc.update_layout(
     paper_bgcolor="rgba(0,0,0,0)",
     plot_bgcolor="rgba(0,0,0,0)",
     margin=dict(t=30, b=80),
+    height=450,
 )
 st.plotly_chart(fig_abc, width="stretch")
 
@@ -180,7 +182,11 @@ with col_left:
         size_max=50,
     )
     fig_scatter.update_traces(textposition="top center", textfont_size=9)
-    fig_scatter.update_layout(showlegend=False, margin=dict(t=10, b=10))
+    fig_scatter.update_layout(
+        showlegend=False, 
+        margin=dict(t=20, b=10),
+        height=400,
+    )
 
     media_vol = df_matriz["volume"].mean()
     media_margem = df_matriz["margem_pct"].mean()
@@ -202,10 +208,13 @@ with col_right:
         path=["categoria"],
         values="receita_cat",
         color="margem_pct",
-        color_continuous_scale=["#E63946", "#F1FAEE", "#007BFF"],
+        color_continuous_scale=C.SCALE_DIVERG,
         labels={"receita_cat": "Receita", "margem_pct": "Margem (%)"},
     )
-    fig_tree.update_layout(margin=dict(t=10, b=10, l=10, r=10))
+    fig_tree.update_layout(
+        margin=dict(t=20, b=10, l=10, r=10),
+        height=400,
+    )
     st.plotly_chart(fig_tree, width="stretch")
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -222,13 +231,14 @@ fig_tempo = px.area(
     y="receita",
     color="categoria",
     labels={"ano_mes": "Mês/Ano", "receita": "Receita (R$)", "categoria": "Categoria"},
-    color_discrete_sequence=px.colors.qualitative.Set2,
+    color_discrete_sequence=C.QUAL,
 )
 fig_tempo.update_layout(
     legend=dict(orientation="h", y=-0.2),
     paper_bgcolor="rgba(0,0,0,0)",
     plot_bgcolor="rgba(0,0,0,0)",
-    margin=dict(t=10, b=80),
+    margin=dict(t=20, b=80),
+    height=450,
 )
 st.plotly_chart(fig_tempo, width="stretch")
 
@@ -341,7 +351,7 @@ abc_prod["classe"] = abc_prod["pct_acum"].apply(_classe_abc)
 
 # Exibe top 30 no gráfico para não sobrecarregar
 top30 = abc_prod.head(30)
-cor_abc = {"A": "#007BFF", "B": "#39B54A", "C": "#B3D9FF"}
+cor_abc = C.abc_map()
 
 fig_abc_prod = go.Figure()
 fig_abc_prod.add_trace(
@@ -350,8 +360,15 @@ fig_abc_prod.add_trace(
         y=top30["receita"],
         marker_color=[cor_abc[c] for c in top30["classe"]],
         name="Receita",
-        text=top30["receita"].apply(lambda v: f"R$ {v:,.0f}"),
-        textposition="outside",
+        customdata=list(zip(
+            top30["receita"].apply(lambda v: f"R$ {v:,.0f}".replace(",", ".")),
+            top30["classe"],
+        )),
+        hovertemplate=(
+            "<b>%{x}</b><br>"
+            "Receita: %{customdata[0]}<br>"
+            "Classe ABC: %{customdata[1]}<extra></extra>"
+        ),
         yaxis="y1",
     )
 )
@@ -361,14 +378,14 @@ fig_abc_prod.add_trace(
         y=top30["pct_acum"],
         mode="lines+markers",
         name="% Acumulado",
-        line=dict(color="#E63946", width=2),
+        line=dict(color=C.CORAL, width=2),
         yaxis="y2",
     )
 )
 fig_abc_prod.add_hline(
     y=80,
     line_dash="dash",
-    line_color="#E63946",
+    line_color=C.CORAL,
     opacity=0.6,
     annotation_text="80%",
     yref="y2",
@@ -386,7 +403,8 @@ fig_abc_prod.update_layout(
     legend=dict(orientation="h", y=-0.25),
     paper_bgcolor="rgba(0,0,0,0)",
     plot_bgcolor="rgba(0,0,0,0)",
-    margin=dict(t=10, b=100),
+    margin=dict(t=20, b=100),
+    height=550,
 )
 st.plotly_chart(fig_abc_prod, width="stretch")
 
@@ -411,7 +429,8 @@ with col_p1:
         yaxis=dict(categoryorder="total ascending"),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        margin=dict(t=10, b=10),
+        margin=dict(t=20, b=10),
+        height=600,
     )
     st.plotly_chart(fig_tr, width="stretch")
 
@@ -424,7 +443,7 @@ with col_p2:
         y="produto",
         orientation="h",
         color="margem_pct",
-        color_continuous_scale=["#B3D9FF", "#007BFF"],
+        color_continuous_scale=C.SCALE_VIOLET,
         text=top_luc["lucro"].apply(lambda v: f"R$ {v:,.0f}"),
         labels={"lucro": "Lucro Bruto (R$)", "produto": "", "margem_pct": "Margem %"},
     )
@@ -432,7 +451,8 @@ with col_p2:
         yaxis=dict(categoryorder="total ascending"),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        margin=dict(t=10, b=10),
+        margin=dict(t=20, b=10),
+        height=600,
     )
     st.plotly_chart(fig_tl, width="stretch")
 

@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import data_loader
 import utils as u
+from utils import C
 
 # ── Configuração ───────────────────────────────────────────────────────────────
 
@@ -105,9 +106,9 @@ fig_ev.add_trace(
         y=evolucao["receita"],
         name="Receita Bruta",
         mode="lines+markers",
-        line=dict(color="#007BFF", width=2.5),
+        line=dict(color=C.VIOLET, width=2.5),
         fill="tozeroy",
-        fillcolor="rgba(0,2,77,0.07)",
+        fillcolor="rgba(124,92,191,0.08)",
     )
 )
 fig_ev.add_trace(
@@ -116,9 +117,9 @@ fig_ev.add_trace(
         y=evolucao["margem_lucro"],
         name="Lucro Bruto",
         mode="lines+markers",
-        line=dict(color="#39B54A", width=2.5),
+        line=dict(color=C.TEAL, width=2.5),
         fill="tozeroy",
-        fillcolor="rgba(116,169,207,0.15)",
+        fillcolor="rgba(45,212,191,0.08)",
     )
 )
 fig_ev.update_layout(
@@ -127,7 +128,8 @@ fig_ev.update_layout(
     legend=dict(orientation="h", y=-0.15),
     paper_bgcolor="rgba(0,0,0,0)",
     plot_bgcolor="rgba(0,0,0,0)",
-    margin=dict(t=10, b=60),
+    margin=dict(t=20, b=60),
+    height=450,
 )
 st.plotly_chart(fig_ev, width="stretch")
 
@@ -165,7 +167,7 @@ with col_saz:
         x="mes_nome",
         y="receita",
         color="receita",
-        color_continuous_scale=["#B3D9FF", "#007BFF"],
+        color_continuous_scale=C.SCALE_VIOLET,
         labels={"mes_nome": "Mês", "receita": "Receita Média (R$)"},
         text=sazon["receita"].apply(lambda v: f"R$ {v:,.0f}"),
     )
@@ -173,7 +175,8 @@ with col_saz:
         coloraxis_showscale=False,
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        margin=dict(t=10, b=10),
+        margin=dict(t=20, b=10),
+        height=380,
     )
     st.plotly_chart(fig_saz, width="stretch")
 
@@ -212,12 +215,15 @@ with col_heat:
 
     fig_heat = px.imshow(
         heat_pivot,
-        color_continuous_scale=["#F0FAF1", "#0056CC", "#007BFF"],
+        color_continuous_scale=C.SCALE_HEAT,
         labels=dict(x="Trimestre", y="Dia da Semana", color="Receita (R$)"),
         aspect="auto",
         text_auto=".2s",
     )
-    fig_heat.update_layout(margin=dict(t=10, b=10))
+    fig_heat.update_layout(
+        margin=dict(t=20, b=10),
+        height=380,
+    )
     st.plotly_chart(fig_heat, width="stretch")
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -236,7 +242,7 @@ fig_mix = px.bar(
     y="receita",
     color="categoria",
     barmode="stack",
-    color_discrete_sequence=px.colors.qualitative.Set2,
+    color_discrete_sequence=C.QUAL,
     labels={
         "trimestre": "Trimestre",
         "receita": "Receita (R$)",
@@ -247,7 +253,8 @@ fig_mix.update_layout(
     legend=dict(orientation="h", y=-0.15),
     paper_bgcolor="rgba(0,0,0,0)",
     plot_bgcolor="rgba(0,0,0,0)",
-    margin=dict(t=10, b=60),
+    margin=dict(t=20, b=60),
+    height=450,
 )
 st.plotly_chart(fig_mix, width="stretch")
 
@@ -277,49 +284,42 @@ vendedores["Vendedor"] = vendedores["nome_vendedor"].fillna(
 )
 vendedores = vendedores.sort_values("receita", ascending=False)
 
-col_v1, col_v2 = st.columns(2)
-
-with col_v1:
-    st.markdown(f"#### Ranking por Faturamento (Comissão: {tx_comissao*100:.1f}%)")
-    top10 = vendedores.head(10)
-    fig_vend = go.Figure()
-    fig_vend.add_trace(
-        go.Bar(
-            y=top10["Vendedor"],
-            x=top10["receita"],
-            name="Receita",
-            orientation="h",
-            marker_color="#007BFF",
-            text=top10["receita"].apply(lambda v: f"R$ {v:,.0f}"),
-            textposition="outside",
-        )
+st.markdown(f"#### Ranking por Faturamento (Comissão: {tx_comissao*100:.1f}%)")
+top10 = vendedores.head(10).sort_values("receita", ascending=True)
+fig_vend = go.Figure()
+fig_vend.add_trace(
+    go.Bar(
+        y=top10["Vendedor"],
+        x=top10["receita"],
+        name="Receita",
+        orientation="h",
+        marker=dict(
+            color=top10["receita"],
+            colorscale=C.SCALE_VIOLET,
+            showscale=False,
+        ),
+        text=top10["receita"].apply(lambda v: f"R$ {v:,.0f}".replace(",", ".")),
+        textposition="outside",
+        cliponaxis=False,
+        textfont=dict(size=14, color=C.VIOLET),
+        customdata=top10["comissao"].apply(lambda v: f"R$ {v:,.0f}".replace(",", ".")),
+        hovertemplate=(
+            "<b>%{y}</b><br>"
+            "Receita: %{text}<br>"
+            "Comissão: %{customdata}<extra></extra>"
+        ),
     )
-    fig_vend.add_trace(
-        go.Bar(
-            y=top10["Vendedor"],
-            x=top10["comissao"],
-            name=f"Comissão ({tx_comissao*100:.1f}%)",
-            orientation="h",
-            marker_color="#39B54A",
-            text=top10["comissao"].apply(lambda v: f"R$ {v:,.0f}"),
-            textposition="outside",
-            xaxis="x2",
-        )
-    )
-    fig_vend.update_layout(
-        xaxis=dict(title="Receita (R$)", side="bottom"),
-        xaxis2=dict(title="Comissão (R$)", overlaying="x", side="top", showgrid=False),
-        yaxis=dict(categoryorder="total ascending"),
-        legend=dict(orientation="h", y=-0.15),
-        barmode="overlay",
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        margin=dict(t=40, b=60, l=120),
-    )
-    fig_vend.update_traces(opacity=0.85)
-    st.plotly_chart(fig_vend, width="stretch")
-
-
+)
+fig_vend.update_layout(
+    xaxis=dict(title="", showticklabels=False, showgrid=False, zeroline=False),
+    yaxis=dict(title="", tickfont=dict(size=13)),
+    paper_bgcolor="rgba(0,0,0,0)",
+    plot_bgcolor="rgba(0,0,0,0)",
+    margin=dict(t=20, b=20, l=10, r=200),
+    height=520,
+    showlegend=False,
+)
+st.plotly_chart(fig_vend, width="stretch")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 5. ANÁLISE DE CRESCIMENTO MoM (MÊS A MÊS)
@@ -334,7 +334,7 @@ crescimento = df.groupby("ano_mes")["receita"].sum().reset_index()
 crescimento["variacao_pct"] = crescimento["receita"].pct_change() * 100
 crescimento = crescimento.dropna()
 
-cores_mom = ["#E63946" if v < 0 else "#007BFF" for v in crescimento["variacao_pct"]]
+cores_mom = [C.CORAL if v < 0 else C.VIOLET for v in crescimento["variacao_pct"]]
 
 fig_mom = go.Figure()
 fig_mom.add_trace(
@@ -352,7 +352,8 @@ fig_mom.update_layout(
     xaxis_title="Mês/Ano",
     paper_bgcolor="rgba(0,0,0,0)",
     plot_bgcolor="rgba(0,0,0,0)",
-    margin=dict(t=10, b=10),
+    margin=dict(t=20, b=10),
+    height=400,
 )
 st.plotly_chart(fig_mom, width="stretch")
 

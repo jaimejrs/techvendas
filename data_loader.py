@@ -1,16 +1,21 @@
+import os
 import pandas as pd
 import numpy as np
 from sqlalchemy import create_engine
 import streamlit as st
+from dotenv import load_dotenv
 
-# Recuperando as credenciais via Streamlit Secrets
-try:
-    HOST = st.secrets["postgres"]["host"]
-    DATABASE = st.secrets["postgres"]["database"]
-    USER = st.secrets["postgres"]["user"]
-    PASSWORD = st.secrets["postgres"]["password"]
-except KeyError:
-    st.error("Erro: Credenciais de banco de dados não encontradas.")
+# Carregar variáveis de ambiente do arquivo .env
+load_dotenv()
+
+# Recuperando as credenciais (tenta .env primeiro, depois st.secrets como fallback)
+HOST = os.getenv("DB_HOST") or st.secrets.get("postgres", {}).get("host")
+DATABASE = os.getenv("DB_DATABASE") or st.secrets.get("postgres", {}).get("database")
+USER = os.getenv("DB_USER") or st.secrets.get("postgres", {}).get("user")
+PASSWORD = os.getenv("DB_PASSWORD") or st.secrets.get("postgres", {}).get("password")
+
+if not all([HOST, DATABASE, USER, PASSWORD]):
+    st.error("Erro: Credenciais de banco de dados não encontradas no .env ou Streamlit Secrets.")
     st.stop()
 
 DATABASE_URL = f"postgresql://{USER}:{PASSWORD}@{HOST}/{DATABASE}"
@@ -162,4 +167,60 @@ def carregar_dados_vendedores():
   """
     with engine.connect() as conn:
         df = pd.read_sql(query, conn)
+    return df
+
+
+# ── Dados de Recursos Humanos ──────────────────────────────────────────────────
+@st.cache_data(ttl=3600)
+def carregar_dados_rh():
+    engine = _get_engine()
+    query = """
+    -- BUST CACHE 3
+    SELECT 
+        f.id AS id_funcionario,
+        pf.nome AS nome,
+        pf.nascimento,
+        f.pcd,
+        e.descricao AS escolaridade,
+        l.data_cadastro AS data_admissao,
+        l.data_desligamento,
+        l.salario,
+        c.descricao AS cargo,
+        d.descricao AS departamento
+    FROM rh.funcionario f
+    INNER JOIN geral.pessoa_fisica pf ON f.id_pessoa = pf.id
+    LEFT JOIN rh.escolaridade e ON f.id_escolaridade = e.id
+    LEFT JOIN rh.lotacao l ON f.id = l.id_funcionario
+    LEFT JOIN rh.cargo c ON l.id_cargo = c.id
+    LEFT JOIN rh.departamento d ON l.id_departamento = d.id
+    """
+    with engine.connect() as conn:
+        df = pd.read_sql(query, conn)
+        
+    # Feature Engineering
+    df["data_admissao"] = pd.to_datetime(df["data_admissao"]).dt.tz_localize(None)
+    df["data_desligamento"] = pd.to_datetime(df["data_desligamento"]).dt.tz_localize(None)
+    df["nascimento"] = pd.to_datetime(df["nascimento"]).dt.tz_localize(None)
+    
+    data_ref = pd.Timestamp.today()
+    
+    # Status
+    df["status"] = np.where(df["data_desligamento"].isnull(), "Ativo", "Desligado")
+    
+    # Idade e Tempo de Casa (anos)
+    df["idade"] = (data_ref - df["nascimento"]).dt.days / 365.25
+    df["tempo_casa_anos"] = (
+        np.where(
+            df["status"] == "Ativo",
+            (data_ref - df["data_admissao"]).dt.days,
+            (df["data_desligamento"] - df["data_admissao"]).dt.days
+        )
+    ) / 365.25
+    
+    # Pega apenas a lotação mais recente de cada funcionário
+    df = df.sort_values(by=["id_funcionario", "data_admissao"], ascending=[True, False]).drop_duplicates(subset=["id_funcionario"], keep="first")
+    
+    # Tratamento de dados Nulos
+    df["escolaridade"] = df["escolaridade"].fillna("Não Informada")
+    
     return df

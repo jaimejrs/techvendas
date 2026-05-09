@@ -1,10 +1,14 @@
 # Arquivos de Segurança Streamlit
 .streamlit/secrets.toml
 
+# Credenciais e variáveis de ambiente (NUNCA commitar!)
+.env
+
 # Ambientes Virtuais (ajuste o nome se a sua pasta for diferente de .venv ou venv)
 .venv/
 venv/
 env/
+mod3/
 data/
 
 # Arquivos de cache do Python e Jupyter

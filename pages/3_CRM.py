@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import data_loader
 import utils as u
+from utils import C
 
 # ── Configuração ───────────────────────────────────────────────────────────────
 
@@ -52,30 +53,40 @@ df_atrasados = df_fin_filt[df_fin_filt["status_pagamento"] == "ATRASADA"]
 
 # ── KPIs ───────────────────────────────────────────────────────────────────────
 total_clientes = df["id_cliente"].nunique()
-receita_total = df["receita"].sum()
-ticket_medio = receita_total / total_clientes if total_clientes > 0 else 0
-clientes_inadimplentes = df_atrasados["id_cliente"].nunique()
-taxa_risco = (
-    (clientes_inadimplentes / total_clientes * 100) if total_clientes > 0 else 0
-)
 
+df_clientes_unicos = df.drop_duplicates(subset=["id_cliente", "tipo_cliente"])
+total_pf = df_clientes_unicos[df_clientes_unicos["tipo_cliente"].str.contains("Física", na=False)]["id_cliente"].count()
+total_pj = df_clientes_unicos[df_clientes_unicos["tipo_cliente"].str.contains("Jurídica", na=False)]["id_cliente"].count()
 
-c1, c2, c3 = st.columns(3)
+total_compras = df["id_nota_fiscal"].nunique()
+valor_total_compras = df["receita"].sum()
+
+c1, c2, c3, c4, c5 = st.columns(5)
 c1.markdown(
-    f"<div class='kpi-card'><div class='kpi-title'>Clientes Ativos</div><div class='kpi-value'>{u.num(total_clientes)}</div></div>",
+    f"<div class='kpi-card'><div class='kpi-title'>Total de Clientes</div><div class='kpi-value'>{u.num(total_clientes)}</div></div>",
     unsafe_allow_html=True,
 )
 c2.markdown(
-    f"<div class='kpi-card'><div class='kpi-title'>Receita Total</div><div class='kpi-value'>{u.brl(receita_total)}</div></div>",
+    f"<div class='kpi-card'><div class='kpi-title'>Pessoas Físicas</div><div class='kpi-value'>{u.num(total_pf)}</div></div>",
     unsafe_allow_html=True,
 )
 c3.markdown(
-    f"<div class='kpi-card'><div class='kpi-title'>Ticket Médio (LTV)</div><div class='kpi-value'>{u.brl(ticket_medio)}</div></div>",
+    f"<div class='kpi-card'><div class='kpi-title'>Pessoas Jurídicas</div><div class='kpi-value'>{u.num(total_pj)}</div></div>",
+    unsafe_allow_html=True,
+)
+c4.markdown(
+    f"<div class='kpi-card'><div class='kpi-title'>Total de Compras</div><div class='kpi-value'>{u.num(total_compras)}</div></div>",
+    unsafe_allow_html=True,
+)
+c5.markdown(
+    f"<div class='kpi-card kpi-green'><div class='kpi-title'>Valor Total (R$)</div><div class='kpi-value'>{u.brl(valor_total_compras)}</div></div>",
     unsafe_allow_html=True,
 )
 
 st.write("")
 st.write("")
+
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 1. MAPA MICRO-GEOGRÁFICO: BAIRROS DE FORTALEZA
@@ -103,28 +114,62 @@ else:
     st.info("Nenhum dado de bairro encontrado para a cidade de Fortaleza com os filtros atuais.")
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 2. MIX DE PRODUTOS B2B vs B2C
+# 2. ANÁLISE B2B vs B2C (VALOR TOTAL E MIX DE PRODUTOS)
 # ══════════════════════════════════════════════════════════════════════════════
 st.divider()
-st.markdown("### Mix de Produtos Preferido (B2B vs B2C)")
-st.caption("Comparativo da representatividade das categorias de produto entre Pessoas Físicas e Jurídicas.")
+col_pizza, col_mix = st.columns(2)
 
-if "categoria" in df.columns:
-    df_mix = df.groupby(["tipo_cliente", "categoria"])["receita"].sum().reset_index()
-    df_mix["pct"] = df_mix.groupby("tipo_cliente")["receita"].transform(lambda x: x / x.sum() * 100)
+with col_pizza:
+    st.markdown("### Valor Total por Tipo de Pessoa")
+    st.caption("Distribuição percentual da receita entre clientes B2B, B2C e não identificados.")
     
-    fig_mix = px.bar(
-        df_mix,
-        x="tipo_cliente",
-        y="pct",
-        color="categoria",
-        text=df_mix["pct"].apply(lambda x: f"{x:.1f}%"),
-        labels={"tipo_cliente": "Perfil", "pct": "Participação (%)", "categoria": "Categoria"},
-        color_discrete_sequence=px.colors.qualitative.Pastel
+    df_pizza = df.groupby("tipo_cliente")["receita"].sum().reset_index()
+    fig_pizza = px.pie(
+        df_pizza,
+        values="receita",
+        names="tipo_cliente",
+        color="tipo_cliente",
+        color_discrete_sequence=C.QUAL,
+        hole=0.4
     )
-    fig_mix.update_traces(textposition="inside", textfont_size=12)
-    fig_mix.update_layout(barmode="stack", margin=dict(t=10, b=10))
-    st.plotly_chart(fig_mix, width="stretch")
+    fig_pizza.update_traces(
+        textposition='inside', 
+        textinfo='percent+label',
+        hovertemplate="<b>%{label}</b><br>Receita: R$ %{value:,.2f}<extra></extra>".replace(",", "X").replace(".", ",").replace("X", ".")
+    )
+    fig_pizza.update_layout(
+        margin=dict(t=20, b=20, l=20, r=20), 
+        height=400,
+        showlegend=False,
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)"
+    )
+    st.plotly_chart(fig_pizza, width="stretch")
+
+with col_mix:
+    st.markdown("### Mix de Produtos Preferido")
+    st.caption("Comparativo da representatividade das categorias de produto entre Pessoas Físicas e Jurídicas.")
+    
+    if "categoria" in df.columns:
+        df_mix = df.groupby(["tipo_cliente", "categoria"])["receita"].sum().reset_index()
+        df_mix["pct"] = df_mix.groupby("tipo_cliente")["receita"].transform(lambda x: x / x.sum() * 100)
+        
+        fig_mix = px.bar(
+            df_mix,
+            x="tipo_cliente",
+            y="pct",
+            color="categoria",
+            text=df_mix["pct"].apply(lambda x: f"{x:.1f}%"),
+            labels={"tipo_cliente": "Perfil", "pct": "Participação (%)", "categoria": "Categoria"},
+            color_discrete_sequence=C.QUAL
+        )
+        fig_mix.update_traces(textposition="inside", textfont_size=12)
+        fig_mix.update_layout(
+            barmode="stack", 
+            margin=dict(t=20, b=10),
+            height=400,
+        )
+        st.plotly_chart(fig_mix, width="stretch")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 3. FATURAMENTO POR CLIENTE
