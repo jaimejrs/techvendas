@@ -19,87 +19,171 @@ st.set_page_config(
 st.markdown(
     """
   <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
 
-  html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
-
+  /* Global typography */
+  html, body, [class*="css"] {
+      font-family: 'Outfit', 'Inter', sans-serif !important;
+  }
+  
   /* ── Sidebar ── */
   [data-testid="stSidebar"] {
-    background-color: #007BFF;
+      background: linear-gradient(180deg, #0052D4 0%, #4364F7 50%, #6FB1FC 100%) !important;
+      box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
+      border-right: 1px solid rgba(255,255,255,0.1);
   }
-  [data-testid="stSidebar"] * { color: #FFFFFF !important; }
+  [data-testid="stSidebar"] * { 
+      color: #FFFFFF !important; 
+  }
+  [data-testid="stSidebar"] hr {
+      border-color: rgba(255,255,255,0.2) !important;
+  }
   [data-testid="stSidebar"] .stSelectbox > div > div,
   [data-testid="stSidebar"] .stMultiSelect > div > div {
-    background-color: rgba(255,255,255,0.15) !important;
-    border-color: rgba(255,255,255,0.3) !important;
-    color: white !important;
+      background-color: rgba(255,255,255,0.1) !important;
+      border: 1px solid rgba(255,255,255,0.2) !important;
+      border-radius: 12px !important;
+      color: white !important;
+      backdrop-filter: blur(12px);
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+      box-shadow: inset 0 2px 4px rgba(255,255,255,0.05);
+  }
+  [data-testid="stSidebar"] .stSelectbox > div > div:hover,
+  [data-testid="stSidebar"] .stMultiSelect > div > div:hover {
+      background-color: rgba(255,255,255,0.2) !important;
+      border-color: rgba(255,255,255,0.4) !important;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
   }
   [data-testid="stSidebarNav"] { display: none; }
 
-  /* ── Fundo geral branco ── */
-  .main { background-color: #FFFFFF; }
+  /* ── Main Container ── */
   .block-container {
-    padding-top: 3rem !important;
-    background-color: #FFFFFF;
+      padding-top: 2rem !important;
+      max-width: 1400px;
   }
 
-  /* ── KPI Cards — design limpo, fundo branco com borda esquerda ── */
+  /* ── Premium KPI Cards (Hover Animations) ── */
   .kpi-card {
-    background-color: #FFFFFF;
-    border-left: 5px solid #007BFF;
-    padding: 16px 20px;
-    border-radius: 8px;
-    text-align: left;
-    box-shadow: 0 2px 10px rgba(0,123,255,0.10);
+      background-color: var(--secondary-background-color);
+      border-left: 6px solid #4facfe;
+      padding: 24px;
+      border-radius: 16px;
+      text-align: left;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s ease;
+      position: relative;
+      overflow: hidden;
   }
+  .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: -100%;
+      width: 50%; height: 100%;
+      background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0) 100%);
+      transform: skewX(-25deg);
+      transition: all 0.7s ease;
+  }
+  .kpi-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  }
+  .kpi-card:hover::before {
+      left: 200%;
+  }
+
   .kpi-title {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: #777777;
-    margin-bottom: 6px;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-color);
+      opacity: 0.8;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
   }
   .kpi-value {
-    font-size: 1.7rem;
-    font-weight: 800;
-    color: #007BFF;
+      font-size: 1.45rem;
+      font-weight: 800;
+      background: linear-gradient(45deg, #00f2fe 0%, #4facfe 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: inline-block;
   }
   .kpi-green { border-left-color: #39B54A; }
-  .kpi-green .kpi-value { color: #39B54A; }
+  .kpi-green .kpi-value { background: linear-gradient(45deg, #39B54A 0%, #38f9d7 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
   .kpi-alert { border-left-color: #E63946; }
-  .kpi-alert .kpi-value { color: #E63946; }
+  .kpi-alert .kpi-value { background: linear-gradient(45deg, #E63946 0%, #ffb199 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
-  /* ── Navegação horizontal ── */
+  /* ── Horizontal Navigation Buttons ── */
   [data-testid="stPageLink"] a {
-    display: flex !important;
-    justify-content: center !important;
-    align-items: center !important;
-    min-height: 42px;
-    padding: 8px 12px !important;
-    border-radius: 8px !important;
-    border: 2px solid #D0E8FF !important;
-    background-color: #F4F8FF !important;
-    color: #007BFF !important;
-    font-weight: 600 !important;
-    font-size: 0.92rem !important;
-    text-decoration: none !important;
-    transition: all 0.2s ease !important;
-    white-space: nowrap !important;
+      display: flex !important;
+      justify-content: center !important;
+      align-items: center !important;
+      min-height: 50px;
+      padding: 10px 15px !important;
+      border-radius: 12px !important;
+      border: 1px solid rgba(200,200,200,0.5) !important;
+      background-color: var(--secondary-background-color) !important;
+      color: var(--text-color) !important;
+      font-weight: 600 !important;
+      font-size: 1rem !important;
+      text-decoration: none !important;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05) !important;
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+      position: relative;
+      overflow: hidden;
   }
   [data-testid="stPageLink"] a:hover {
-    background-color: #D0E8FF !important;
-    border-color: #007BFF !important;
-    color: #007BFF !important;
+      background-color: #007BFF !important;
+      color: #ffffff !important;
+      border-color: #007BFF !important;
+      box-shadow: 0 8px 20px rgba(0, 123, 255, 0.3) !important;
+      transform: translateY(-3px) !important;
   }
   [data-testid="stPageLink"] a[aria-current="page"] {
-    background-color: #007BFF !important;
-    color: #FFFFFF !important;
-    border-color: #007BFF !important;
+      background-color: #007BFF !important;
+      color: #ffffff !important;
+      border: none !important;
+      box-shadow: 0 8px 20px rgba(0, 123, 255, 0.4) !important;
   }
 
-  /* ── Títulos de seção ── */
-  h2 { color: #007BFF !important; }
+  /* ── Section Titles ── */
+  h1, h2, h3 {
+      font-weight: 700 !important;
+      letter-spacing: -0.5px;
+  }
+  h2 {
+      color: #007BFF !important;
+  }
+  
+  /* ── Metric Cards Native Streamlit Adjustments ── */
+  [data-testid="stMetricValue"] {
+      font-family: 'Outfit', sans-serif !important;
+      font-weight: 800 !important;
+      font-size: 1.45rem !important;
+  }
+  
+  /* ── Dataframes / Tables ── */
+  [data-testid="stDataFrame"] {
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+      border: 1px solid rgba(200,200,200,0.3);
+  }
+
+  /* Dark mode overrides if user system is dark */
+  @media (prefers-color-scheme: dark) {
+      .kpi-card {
+          border-color: rgba(255, 255, 255, 0.1);
+      }
+      [data-testid="stPageLink"] a {
+          border-color: rgba(255,255,255,0.1) !important;
+      }
+      [data-testid="stPageLink"] a:hover {
+          background-color: #007BFF !important;
+          color: #fff !important;
+      }
+  }
   </style>
 """,
     unsafe_allow_html=True,
@@ -108,7 +192,6 @@ st.markdown(
 # ── Navegação ──────────────────────────────────────────────────────────────────
 pages = [
     st.Page("pages/2_Vendas.py", title="Vendas"),
-    st.Page("pages/3_Financeiro.py", title="Financeiro"),
     st.Page("pages/4_Produtos.py", title="Produtos"),
     st.Page("pages/5_CRM.py", title="CRM"),
     st.Page("pages/6_Analise_Profunda.py", title="Previsão IA"),
@@ -120,10 +203,26 @@ pg = st.navigation(pages, position="hidden")
 st.sidebar.image("logo_projeto.png", use_container_width=True)
 st.sidebar.markdown("---")
 
+# ── Filtros Globais ────────────────────────────────────────────────────────────
+import data_loader
+import pandas as pd
+
+df_vendas_global = data_loader.carregar_dados_vendas()
+anos_globais = ["Todos"] + sorted(df_vendas_global["ano"].dropna().unique().tolist(), reverse=True)
+categorias_globais = ["Todas"] + sorted(df_vendas_global["categoria"].dropna().unique().tolist())
+
+st.sidebar.header("Filtros Globais")
+ano_global = st.sidebar.selectbox("Ano", anos_globais, key="global_ano_widget")
+cat_global = st.sidebar.selectbox("Categoria", categorias_globais, key="global_cat_widget")
+
+st.session_state["global_ano"] = ano_global
+st.session_state["global_categoria"] = cat_global
+st.sidebar.markdown("---")
+
+
 # ── Barra de navegação horizontal ─────────────────────────────────────────────
 nav_items = [
     ("pages/2_Vendas.py", " Vendas"),
-    ("pages/3_Financeiro.py", " Financeiro"),
     ("pages/4_Produtos.py", " Produtos"),
     ("pages/5_CRM.py", " CRM"),
     ("pages/6_Analise_Profunda.py", " Previsão IA"),

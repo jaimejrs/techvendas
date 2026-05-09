@@ -20,11 +20,14 @@ with st.spinner("Analisando série histórica de vendas..."):
     df_vendas = data_loader.carregar_dados_vendas()
 
 # 3. Barra Lateral: Seleção de Categoria
-st.sidebar.header("Parâmetros de Projeção")
-categorias = sorted(df_vendas["categoria"].unique().tolist())
-cat_selecionada = st.sidebar.selectbox(
-    "Selecione a Categoria para Previsão", categorias
-)
+st.sidebar.header("Parâmetros de Projeção (Específicos)")
+cat_selecionada = st.session_state.get("global_categoria", "Todas")
+
+# Se for "Todas", a série temporal pode ficar misturada, mas o usuário deve escolher uma categoria específica
+if cat_selecionada == "Todas":
+    st.warning("Selecione uma categoria específica no Filtro Global para fazer a previsão.")
+    st.stop()
+
 
 # 4. Preparação da Série Temporal
 # Agrupando por mês para suavizar ruídos diários

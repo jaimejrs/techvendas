@@ -21,16 +21,10 @@ with st.spinner("Carregando base de produtos..."):
     df_vendas = data_loader.carregar_dados_vendas()
 
 # 3. Filtros Avançados
-st.sidebar.header("Filtros de Catálogo")
-anos_disponiveis = ["Todos"] + sorted(
-    df_vendas["ano"].dropna().unique().tolist(), reverse=True
-)
-ano_selecionado = st.sidebar.selectbox("Analisar Ano", anos_disponiveis)
+st.sidebar.header("Filtros de Catálogo (Específicos)")
 
-categorias_disponiveis = sorted(df_vendas["categoria"].dropna().unique().tolist())
-categoria_selecionada = st.sidebar.selectbox(
-    "Categoria", ["Todas"] + categorias_disponiveis
-)
+ano_selecionado = st.session_state.get("global_ano", "Todos")
+categoria_selecionada = st.session_state.get("global_categoria", "Todas")
 
 df = df_vendas
 if ano_selecionado != "Todos":
@@ -41,6 +35,7 @@ if categoria_selecionada != "Todas":
 if df.empty:
     st.warning("Nenhum dado encontrado para os filtros selecionados.")
     st.stop()
+
 
 # 4. KPIs de Rentabilidade
 receita_total = df["receita"].sum()
@@ -236,57 +231,6 @@ fig_tempo.update_layout(
     margin=dict(t=10, b=80),
 )
 st.plotly_chart(fig_tempo, width="stretch")
-
-# ══════════════════════════════════════════════════════════════════════════════
-# 8. COMPARATIVO DUPLO EIXO: LUCRO x VOLUME
-# ══════════════════════════════════════════════════════════════════════════════
-st.divider()
-st.markdown("### Comparativo: Lucro Bruto vs Volume de Saída")
-
-df_comp = (
-    df.groupby("categoria")
-    .agg(margem_lucro=("margem_lucro", "sum"), quantidade=("quantidade", "sum"))
-    .reset_index()
-    .sort_values("margem_lucro", ascending=True)
-)
-
-fig_duo = go.Figure()
-fig_duo.add_trace(
-    go.Bar(
-        y=df_comp["categoria"],
-        x=df_comp["quantidade"],
-        name="Volume de Saída (Itens)",
-        orientation="h",
-        marker=dict(color="#39B54A"),
-    )
-)
-fig_duo.add_trace(
-    go.Bar(
-        y=df_comp["categoria"],
-        x=df_comp["margem_lucro"],
-        name="Lucro Bruto (R$)",
-        orientation="h",
-        marker=dict(color="#007BFF"),
-        xaxis="x2",
-    )
-)
-fig_duo.update_layout(
-    xaxis=dict(
-        title=dict(text="Volume de Saída (Itens)", font=dict(color="#39B54A")),
-        tickfont=dict(color="#39B54A"),
-    ),
-    xaxis2=dict(
-        title=dict(text="Lucro Bruto (R$)", font=dict(color="#007BFF")),
-        tickfont=dict(color="#007BFF"),
-        overlaying="x",
-        side="top",
-    ),
-    legend=dict(x=1, y=0),
-    paper_bgcolor="rgba(0,0,0,0)",
-    plot_bgcolor="rgba(0,0,0,0)",
-    margin=dict(l=200),
-)
-st.plotly_chart(fig_duo, width="stretch")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 9. TABELA DETALHADA COM RANKING E CLASSE ABC
@@ -491,97 +435,6 @@ with col_p2:
         margin=dict(t=10, b=10),
     )
     st.plotly_chart(fig_tl, width="stretch")
-
-# ── Scatter: Eficiência por Produto ───────────────────────────────────────────
-st.divider()
-st.markdown("### Matriz de Eficiência: Volume × Margem por Produto")
-st.caption(
-    "Tamanho da bolha = receita total. Produtos no quadrante superior-direito são os mais estratégicos."
-)
-
-receita_med = produtos_agg["receita"].median()
-margem_med = produtos_agg["margem_pct"].median()
-
-fig_scatter = px.scatter(
-    produtos_agg,
-    x="itens",
-    y="margem_pct",
-    size="receita",
-    color="categoria",
-    hover_name="produto",
-    hover_data={
-        "itens": True,
-        "receita": ":,.0f",
-        "margem_pct": ":.1f",
-        "categoria": True,
-    },
-    color_discrete_sequence=px.colors.qualitative.Set2,
-    labels={
-        "itens": "Volume (Itens Vendidos)",
-        "margem_pct": "Margem (%)",
-        "categoria": "Categoria",
-    },
-    size_max=45,
-)
-fig_scatter.add_vline(x=receita_med, line_dash="dot", line_color="grey", opacity=0.5)
-fig_scatter.add_hline(y=margem_med, line_dash="dot", line_color="grey", opacity=0.5)
-
-# Anotações de quadrante
-fig_scatter.add_annotation(
-    x=0.98,
-    y=0.98,
-    xref="paper",
-    yref="paper",
-    text=" Alta Volume + Alta Margem",
-    showarrow=False,
-    bgcolor="rgba(0,100,0,0.1)",
-    bordercolor="green",
-    font=dict(size=10),
-)
-fig_scatter.add_annotation(
-    x=0.02,
-    y=0.98,
-    xref="paper",
-    yref="paper",
-    text=" Nicho Premium",
-    showarrow=False,
-    bgcolor="rgba(0,0,200,0.08)",
-    bordercolor="#39B54A",
-    font=dict(size=10),
-    xanchor="left",
-)
-fig_scatter.add_annotation(
-    x=0.98,
-    y=0.02,
-    xref="paper",
-    yref="paper",
-    text=" Alto Volume, Baixa Margem",
-    showarrow=False,
-    bgcolor="rgba(255,165,0,0.1)",
-    bordercolor="orange",
-    font=dict(size=10),
-    xanchor="right",
-)
-fig_scatter.add_annotation(
-    x=0.02,
-    y=0.02,
-    xref="paper",
-    yref="paper",
-    text=" Revisar Estratégia",
-    showarrow=False,
-    bgcolor="rgba(200,0,0,0.08)",
-    bordercolor="red",
-    font=dict(size=10),
-    xanchor="left",
-)
-
-fig_scatter.update_layout(
-    legend=dict(orientation="h", y=-0.15),
-    paper_bgcolor="rgba(0,0,0,0)",
-    plot_bgcolor="rgba(0,0,0,0)",
-    margin=dict(t=10, b=60),
-)
-st.plotly_chart(fig_scatter, width="stretch")
 
 # ── Tabela Completa de SKUs ────────────────────────────────────────────────────
 st.divider()

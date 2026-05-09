@@ -31,16 +31,7 @@ df_vendas["trimestre"] = df_vendas["data_venda"].dt.quarter.map(
 )
 
 # ── Filtros ────────────────────────────────────────────────────────────────────
-st.sidebar.header("Filtros Comerciais")
-anos_disponiveis = ["Todos"] + sorted(
-    df_vendas["ano"].dropna().unique().tolist(), reverse=True
-)
-ano_selecionado = st.sidebar.selectbox("Ano", anos_disponiveis)
-
-categorias_disponiveis = ["Todas"] + sorted(
-    df_vendas["categoria"].dropna().unique().tolist()
-)
-categoria_selecionada = st.sidebar.selectbox("Categoria", categorias_disponiveis)
+st.sidebar.header("Filtros Comerciais (Específicos)")
 
 tx_comissao = (
     st.sidebar.slider(
@@ -48,6 +39,9 @@ tx_comissao = (
     )
     / 100
 )
+
+ano_selecionado = st.session_state.get("global_ano", "Todos")
+categoria_selecionada = st.session_state.get("global_categoria", "Todas")
 
 df = df_vendas
 if ano_selecionado != "Todos":
@@ -58,6 +52,7 @@ if categoria_selecionada != "Todas":
 if df.empty:
     st.warning("Nenhum dado para os filtros selecionados.")
     st.stop()
+
 
 # ── KPIs ───────────────────────────────────────────────────────────────────────
 faturamento = df["receita"].sum()
@@ -324,36 +319,7 @@ with col_v1:
     fig_vend.update_traces(opacity=0.85)
     st.plotly_chart(fig_vend, width="stretch")
 
-with col_v2:
-    st.markdown("#### Eficiência: Margem % por Vendedor (Top 10)")
-    st.caption(
-        "Vendedores com alta receita mas baixa margem podem estar concedendo descontos excessivos."
-    )
 
-    fig_ef = px.scatter(
-        vendedores.head(15),
-        x="receita",
-        y="pct_margem",
-        size="clientes",
-        color="pct_margem",
-        text="Vendedor",
-        color_continuous_scale=["#E63946", "#F4A261", "#007BFF"],
-        labels={
-            "receita": "Receita Total (R$)",
-            "pct_margem": "Margem (%)",
-            "clientes": "Clientes Únicos",
-        },
-        size_max=35,
-    )
-    receita_media = vendedores["receita"].mean()
-    margem_media = vendedores["pct_margem"].mean()
-    fig_ef.add_vline(x=receita_media, line_dash="dot", line_color="grey", opacity=0.5)
-    fig_ef.add_hline(y=margem_media, line_dash="dot", line_color="grey", opacity=0.5)
-    fig_ef.update_traces(textposition="top center", textfont_size=8)
-    fig_ef.update_layout(
-        coloraxis_showscale=False, showlegend=False, margin=dict(t=10, b=10)
-    )
-    st.plotly_chart(fig_ef, width="stretch")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 5. ANÁLISE DE CRESCIMENTO MoM (MÊS A MÊS)

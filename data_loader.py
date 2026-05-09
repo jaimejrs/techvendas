@@ -38,7 +38,14 @@ def carregar_dados_vendas():
   FROM vendas.nota_fiscal nf
   INNER JOIN vendas.item_nota_fiscal inf ON nf.id = inf.id_nota_fiscal
   INNER JOIN vendas.produto p ON inf.id_produto = p.id
-  INNER JOIN vendas.categoria cat ON p.id_categoria = cat.id;
+  INNER JOIN vendas.categoria cat ON p.id_categoria = cat.id
+  INNER JOIN geral.endereco ender ON nf.id_cliente = ender.id_pessoa
+  INNER JOIN geral.bairro b ON ender.id_bairro = b.id
+  INNER JOIN geral.cidade c ON b.id_cidade = c.id
+  INNER JOIN geral.estado est ON c.id_estado = est.id
+  WHERE nf.data_venda >= '2018-01-01'
+    AND lower(cat.descricao) NOT IN ('games', 'dvds', 'livros', 'passagens')
+    AND est.sigla = 'CE';
   """
     with engine.connect() as conn:
         df = pd.read_sql(query, conn)
@@ -71,10 +78,12 @@ def carregar_dados_financeiro():
   INNER JOIN vendas.parcela parc ON nf.id = parc.id_nota_fiscal
   INNER JOIN financeiro.conta_receber cr ON parc.id = cr.id_parcela
   INNER JOIN financeiro.situacao_titulo st ON cr.id_situacao = st.id
-  LEFT JOIN geral.endereco ender ON nf.id_cliente = ender.id_pessoa
-  LEFT JOIN geral.bairro b ON ender.id_bairro = b.id
-  LEFT JOIN geral.cidade c ON b.id_cidade = c.id
-  LEFT JOIN geral.estado est ON c.id_estado = est.id;
+  INNER JOIN geral.endereco ender ON nf.id_cliente = ender.id_pessoa
+  INNER JOIN geral.bairro b ON ender.id_bairro = b.id
+  INNER JOIN geral.cidade c ON b.id_cidade = c.id
+  INNER JOIN geral.estado est ON c.id_estado = est.id
+  WHERE nf.data_venda >= '2018-01-01'
+    AND est.sigla = 'CE';
   """
     with engine.connect() as conn:
         df = pd.read_sql(query, conn)
@@ -109,12 +118,25 @@ def carregar_dados_crm():
       WHEN pf.id IS NOT NULL THEN 'Pessoa Física (B2C)'
       WHEN pj.id IS NOT NULL THEN 'Pessoa Jurídica (B2B)'
       ELSE 'Não Identificado'
-    END as tipo_cliente
+    END as tipo_cliente,
+    c.descricao AS cidade,
+    b.descricao AS bairro,
+    cat.descricao AS categoria,
+    nf.id_vendedor
   FROM vendas.nota_fiscal nf
   INNER JOIN vendas.item_nota_fiscal inf ON nf.id = inf.id_nota_fiscal
-  INNER JOIN geral.pessoa p ON nf.id_cliente = p.id
-  LEFT JOIN geral.pessoa_fisica pf ON p.id = pf.id
-  LEFT JOIN geral.pessoa_juridica pj ON p.id = pj.id;
+  INNER JOIN vendas.produto p ON inf.id_produto = p.id
+  INNER JOIN vendas.categoria cat ON p.id_categoria = cat.id
+  INNER JOIN geral.pessoa pessoa ON nf.id_cliente = pessoa.id
+  LEFT JOIN geral.pessoa_fisica pf ON pessoa.id = pf.id
+  LEFT JOIN geral.pessoa_juridica pj ON pessoa.id = pj.id
+  INNER JOIN geral.endereco ender ON nf.id_cliente = ender.id_pessoa
+  INNER JOIN geral.bairro b ON ender.id_bairro = b.id
+  INNER JOIN geral.cidade c ON b.id_cidade = c.id
+  INNER JOIN geral.estado est ON c.id_estado = est.id
+  WHERE nf.data_venda >= '2018-01-01'
+    AND lower(cat.descricao) NOT IN ('games', 'dvds', 'livros', 'passagens')
+    AND est.sigla = 'CE';
   """
     with engine.connect() as conn:
         df = pd.read_sql(query, conn)
@@ -128,16 +150,15 @@ def carregar_dados_crm():
 # ── Nomes de Vendedores ───────────────────────────────────────────────────────
 @st.cache_data(ttl=3600)
 def carregar_dados_vendedores():
-    """Retorna mapeamento id_vendedor → nome_vendedor via join com RH."""
+    """Retorna mapeamento id_vendedor → nome_vendedor consultando a tabela pessoa."""
     engine = _get_engine()
     query = """
-  SELECT
-    func.id AS id_vendedor,
-    COALESCE(pf.nome, pj.razao_social, 'Vendedor ' || func.id::text) AS nome_vendedor
-  FROM rh.funcionario func
-  INNER JOIN geral.pessoa p  ON func.id = p.id
-  LEFT JOIN geral.pessoa_fisica pf ON p.id = pf.id
-  LEFT JOIN geral.pessoa_juridica pj ON p.id = pj.id;
+  SELECT DISTINCT
+    nf.id_vendedor,
+    COALESCE(pf.nome, pj.razao_social, 'Vendedor ' || nf.id_vendedor::text) AS nome_vendedor
+  FROM vendas.nota_fiscal nf
+  LEFT JOIN geral.pessoa_fisica pf ON nf.id_vendedor = pf.id
+  LEFT JOIN geral.pessoa_juridica pj ON nf.id_vendedor = pj.id;
   """
     with engine.connect() as conn:
         df = pd.read_sql(query, conn)
