@@ -1,5 +1,5 @@
 # Arquivos de Segurança Streamlit
-.streamlit/secrets.toml
+**/secrets.toml
 
 # Credenciais e variáveis de ambiente (NUNCA commitar!)
 .env
