@@ -13,31 +13,41 @@
 ![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4o--mini-412991?logo=openai&logoColor=white)
 ![Plotly](https://img.shields.io/badge/Plotly-5.x-3F4F75?logo=plotly&logoColor=white)
 
-🔗 **[Acesse o Dashboard ao vivo](https://techvendasdigital.streamlit.app)**
+[Acesse o Dashboard ao vivo](https://techvendasdigital.streamlit.app)
 
 </div>
 
 ---
 
-## 📋 Sobre o Projeto
+## Sobre o Projeto
 
 O **TechVendas BI** é um dashboard de Business Intelligence desenvolvido para a **TechVendas**, empresa de tecnologia do Ceará. A plataforma centraliza dados de vendas, produtos, clientes, financeiro e recursos humanos em uma interface moderna e interativa, com um assistente de IA integrado que responde perguntas em linguagem natural sobre os dados da empresa.
 
+### Telas do Dashboard
+
+**Visão Geral de Vendas e Performance**
+
+![Dashboard de Vendas](dashboard_vendas.png)
+
+**Módulo de CRM (Customer Relationship Management)**
+
+![Dashboard de CRM](dashboard_crm.png)
+
 ---
 
-## ✨ Funcionalidades
+## Funcionalidades
 
-### 📊 Módulos do Dashboard
+### Módulos do Dashboard
 
 | Módulo | Descrição |
 |--------|-----------|
-| **📈 Vendas** | Curva de crescimento receita vs margem, sazonalidade, heatmap dia/trimestre, performance do time de vendas e análise MoM |
-| **📦 Produtos** | Classificação ABC por Pareto, matriz estratégica volume × margem, treemap de rentabilidade, drill-down por SKU |
-| **👥 CRM** | Segmentação B2B vs B2C, densidade geográfica por bairro, mix de produtos por perfil e faturamento por cliente |
-| **🏢 RH** | People Analytics — headcount por departamento, salário médio por cargo, turnover e tempo de casa |
-| **🤖 Assistente IA** | Chatbot integrado na sidebar com GPT-4o-mini, que gera SQL automaticamente e responde em português |
+| **Vendas** | Curva de crescimento receita vs margem, sazonalidade, heatmap dia/trimestre, performance do time de vendas e análise MoM |
+| **Produtos** | Classificação ABC por Pareto, matriz estratégica volume × margem, treemap de rentabilidade, drill-down por SKU |
+| **CRM** | Segmentação B2B vs B2C, densidade geográfica por bairro, mix de produtos por perfil e faturamento por cliente |
+| **RH** | People Analytics — headcount por departamento, salário médio por cargo, turnover e tempo de casa |
+| **Assistente IA** | Chatbot integrado na sidebar com GPT-4o-mini, que gera SQL automaticamente e responde em português |
 
-### 🎨 Design & UX
+### Design & UX
 - Paleta de cores sofisticada e consistente em todos os gráficos (Violeta / Teal / Coral)
 - KPI Cards com animações hover e gradiente
 - Navegação horizontal entre módulos
@@ -46,7 +56,7 @@ O **TechVendas BI** é um dashboard de Business Intelligence desenvolvido para a
 
 ---
 
-## 🛠 Stack Tecnológica
+## Stack Tecnológica
 
 ### Core
 | Tecnologia | Versão | Uso |
@@ -77,9 +87,9 @@ O **TechVendas BI** é um dashboard de Business Intelligence desenvolvido para a
 
 ---
 
-## 🗂 Estrutura do Projeto
+## Estrutura do Projeto
 
-```
+```text
 techvendas/
 ├── app.py                    # Entrypoint — navegação, CSS global, filtros, sidebar IA
 ├── data_loader.py            # Queries SQL e feature engineering (cache @st.cache_data)
@@ -99,7 +109,7 @@ techvendas/
 
 ---
 
-## 🚀 Rodando Localmente
+## Rodando Localmente
 
 ### 1. Pré-requisitos
 - Python 3.11+
@@ -144,17 +154,17 @@ Acesse em: **http://localhost:8501**
 
 ---
 
-## ☁️ Deploy — Streamlit Cloud
+## Deploy — Streamlit Cloud
 
 O projeto está disponível publicamente em:
 
-> 🔗 **https://techvendasdigital.streamlit.app**
+> **https://techvendasdigital.streamlit.app**
 
 As credenciais são configuradas via **Streamlit Secrets** (painel da plataforma), sem expor dados sensíveis no repositório.
 
 ---
 
-## 🔒 Segurança
+## Segurança
 
 - O arquivo `.env` está no `.gitignore` — credenciais nunca são commitadas
 - O Assistente IA aceita apenas queries `SELECT` — operações destrutivas são bloqueadas por regex
@@ -163,12 +173,12 @@ As credenciais são configuradas via **Streamlit Secrets** (painel da plataforma
 
 ---
 
-## 📄 Licença
+## Licença
 
 Este projeto foi desenvolvido para fins acadêmicos e demonstrativos.
 
 ---
 
 <div align="center">
-  <sub>Desenvolvido com ❤️ usando Python, Streamlit e OpenAI</sub>
+  <sub>Desenvolvido usando Python, Streamlit e OpenAI</sub>
 </div>
